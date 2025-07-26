@@ -3,7 +3,7 @@ import axios from 'axios';
 import moment from 'moment';
 import { Link } from 'react-router-dom';
 
-const Comments = ({ postId }) => {
+const CommentPage = ({ postId }) => {
   const [comments, setComments] = useState([]);
   const [userId, setUserId] = useState(null);
   const [newComment, setNewComment] = useState('');
