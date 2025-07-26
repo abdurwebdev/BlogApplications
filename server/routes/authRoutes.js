@@ -133,6 +133,19 @@ router.post("/create", verifyToken, async (req, res) => {
   }
 });
 
+router.get("/myblogs", verifyToken, async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const blogs = await postModel.find({ authorId: userId }).sort({ createdAt: -1 });
+
+    res.status(200).json(blogs);
+  } catch (error) {
+    console.error("Failed to fetch user blogs:", error);
+    res.status(500).json({ error: "Failed to fetch your blogs" });
+  }
+});
+
 
 router.post('/like/:postId', verifyToken, async (req, res) => {
   const decoded = req.user;
