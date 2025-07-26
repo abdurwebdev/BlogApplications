@@ -33,29 +33,44 @@ router.post("/register",async (req,res)=>{
   }
 });
 
-router.post("/login",async (req,res)=>{
-  let {email,password} = req.body;
+router.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+
   try {
-    let withemail = await userModel.findOne({email});
-    if(!withemail) return res.send("Something went wrong");
-    bcrypt.compare(password, withemail.password, function(err, result) {
-      if(!result){
-        res.send("Something went wrong")
+    const withemail = await userModel.findOne({ email });
+    if (!withemail) return res.status(400).send("Invalid credentials");
+
+    bcrypt.compare(password, withemail.password, function (err, result) {
+      if (!result) {
+        return res.status(400).send("Invalid credentials");
+      } else {
+        const token = jwt.sign(
+          {
+            _id: withemail._id,
+            username: withemail.username,
+            email: withemail.email,
+            bio: withemail.bio
+          },
+          process.env.JWT_SECRET
+        );
+
+        // ✅ Set cookie properly
+        res.cookie("token", token, {
+          httpOnly: true,
+          secure: true,      // Use HTTPS (Vercel uses HTTPS)
+          sameSite: "None",  // Allow cross-site cookies
+          maxAge: 24 * 60 * 60 * 1000
+        });
+
+        return res.status(200).send("You can Login");
       }
-      else{
-        var token = jwt.sign({
-          _id:withemail._id,
-          username:withemail.username,
-          email:withemail.email,
-          bio:withemail.bio
-         }, process.env.JWT_SECRET);
-        res.cookie("token",token);
-        res.send("You can Login")
-      }
-  });
+    });
   } catch (error) {
-    res.send(error);
+    return res.status(500).send("Internal server error");
   }
+});
+router.get("/hello",(req,res)=>{
+  res.send("Hello from server");
 })
 
 
