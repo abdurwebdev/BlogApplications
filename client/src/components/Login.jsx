@@ -26,7 +26,7 @@ function Login(){
       <h1 className='font-bold text-3xl mb-3 w-96 '>Login To Your Account</h1>
       <form onSubmit={handleLogin} className='w-full sm:flex sm:items-center sm:justify-start  sm:flex-col'>
         <div>
-        <h1>Enter your email</h1>
+        <h1>Enter your emailssssssssssss</h1>
         <input className='w-full sm:w-96 h-10 rounded-md bg-zinc-800 outline-none placeholder:text-white px-3' type="text" value={email} onChange={(e)=>{
           setEmail(e.target.value);
         }}  placeholder='Enter Your email'/>

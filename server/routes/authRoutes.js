@@ -101,28 +101,38 @@ router.get("/logout", (req, res) => {
 });
 
 router.post("/create", verifyToken, async (req, res) => {
-  let { title, content, tags } = req.body;
-  tags = tags.split(",");
-  let decoded = req.user;
-  const slug = slugify(title, { lower: true });
-
   try {
+    let { title, content, tags } = req.body;
+    if (!title || !content) {
+      return res.status(400).json({ error: "Title and content are required" });
+    }
+
+    tags = tags.split(",").map(tag => tag.trim());
+    const slug = slugify(title, { lower: true });
+
+    console.log("Decoded user:", req.user);
+    if (!req.user || !req.user.username) {
+      return res.status(401).json({ error: "Unauthorized: invalid token" });
+    }
+
     let createdBlog = await postModel.create({
       title,
       content,
       tags,
       slug,
       isPublished: true,
-      author: decoded.username,
-      authorId: decoded._id,
+      author: req.user.username,
+      authorId: req.user._id,
       publishedAt: new Date()
     });
+
     res.json({ message: "Blog Created Successfully", blog: createdBlog });
   } catch (error) {
-    console.error("Failed : ", error);
+    console.error("Failed to create blog:", error);
     res.status(500).json({ error: "Failed to create blog." });
   }
 });
+
 
 router.post('/like/:postId', verifyToken, async (req, res) => {
   const decoded = req.user;
