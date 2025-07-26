@@ -7,6 +7,21 @@ const bcrypt = require('bcrypt');
 var jwt = require('jsonwebtoken');
 const verifyToken = require('../middleware/authMiddleware');
 require('dotenv').config();
+router.get('/me', (req, res) => { // ⬅️ add this
+
+  const token = req.cookies.token;
+  if (!token) return res.status(401).json({ message: 'No token found' });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET); // ⬅️ add this
+    res.json({ _id: decoded._id, username: decoded.username });
+  } catch (err) {
+    console.error('JWT verification error:', err); // ⬅️ log error
+    res.status(500).json({ message: 'Token error' }); // be specific
+  }
+});
+
+
 router.post("/register",async (req,res)=>{
   let {username,email,password,bio} = req.body;
   try {
@@ -55,12 +70,11 @@ router.post("/login", async (req, res) => {
         );
 
         // ✅ Set cookie properly
-        res.cookie("token", token, {
-          httpOnly: true,
-          secure: true,      // Use HTTPS (Vercel uses HTTPS)
-          sameSite: "None",  // Allow cross-site cookies
-          maxAge: 24 * 60 * 60 * 1000
-        });
+        res.cookie('token', token, {
+          secure: true,            // Set true in production with HTTPS
+          sameSite: 'None',          // Or 'None' for cross-site requests
+          path: '/',                // Ensure it's sent with all routes
+        });        
 
         return res.status(200).send("You can Login");
       }
@@ -226,6 +240,54 @@ router.get("/allblogs", async (req, res) => {
   } catch (error) {
     console.error("Error fetching blogs:", error);
     res.status(500).json({ error: "Failed to fetch blogs" });
+  }
+});
+
+router.delete("/delete/:id", verifyToken, async (req, res) => {
+  try {
+    const blog = await postModel.findOneAndDelete({
+      _id: req.params.id,
+      authorId: req.user._id, // Ensure only the author can delete
+    });
+
+    if (!blog) {
+      return res.status(404).json({ message: "Blog not found or unauthorized" });
+    }
+
+    res.status(200).json({ message: "Blog deleted successfully" });
+  } catch (error) {
+    console.error("Failed to delete blog:", error);
+    res.status(500).json({ error: "Failed to delete blog" });
+  }
+});
+
+router.put("/update/:id", verifyToken, async (req, res) => {
+  try {
+    const { title, content, tags, isPublished } = req.body;
+
+    const updatedBlog = await postModel.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        authorId: req.user._id, // Ensure only the author can update
+      },
+      {
+        title,
+        content,
+        tags,
+        isPublished,
+        publishedAt: isPublished ? new Date() : null,
+      },
+      { new: true }
+    );
+
+    if (!updatedBlog) {
+      return res.status(404).json({ message: "Blog not found or unauthorized" });
+    }
+
+    res.status(200).json({ message: "Blog updated successfully", blog: updatedBlog });
+  } catch (error) {
+    console.error("Failed to update blog:", error);
+    res.status(500).json({ error: "Failed to update blog" });
   }
 });
 

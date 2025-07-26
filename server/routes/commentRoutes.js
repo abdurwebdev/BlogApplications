@@ -2,18 +2,18 @@ const express = require('express');
 const router = express.Router();
 const Comment = require('../models/commentModel');
 const verifyToken = require('../middleware/authMiddleware');
-const userModel = require('../models/user'); 
-// Get all comments for a post
+
+// Get comments for a post
 router.get('/comment/:postId', async (req, res) => {
   try {
-    const comments = await Comment.find({ post: req.params.postId })
-      .populate('user', 'username');
+    const comments = await Comment.find({ post: req.params.postId }).populate('user', 'username');
     res.json(comments);
   } catch (err) {
     res.status(500).json({ error: 'Error fetching comments' });
   }
 });
 
+// Post a comment
 router.post('/comment/:postId', verifyToken, async (req, res) => {
   try {
     const newComment = await Comment.create({
@@ -24,38 +24,34 @@ router.post('/comment/:postId', verifyToken, async (req, res) => {
     const populated = await newComment.populate('user', 'username');
     res.json(populated);
   } catch (err) {
-    console.error("❌ Failed to create comment:", err); // 🔍 ADD THIS
     res.status(500).json({ error: 'Failed to create comment' });
   }
 });
 
-
-// Update comment
-router.put('/comment/:commentId', verifyToken, async (req, res) => {
+// Delete a comment ✅ FIXED model name
+router.delete('/comment/delete/:id',verifyToken, async (req, res) => {
   try {
-    const comment = await Comment.findById(req.params.commentId);
-    if (comment.user.toString() !== req.user._id) {
-      return res.status(403).json({ error: 'Unauthorized' });
-    }
-    comment.content = req.body.content;
-    await comment.save();
-    res.json(comment);
+    await Comment.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: 'Comment deleted successfully' });
   } catch (err) {
-    res.status(500).json({ error: 'Error updating comment' });
+    res.status(500).json({ error: 'Error deleting comment' });
   }
 });
 
-// Delete comment
-router.delete('/comment/:commentId', verifyToken, async (req, res) => {
+// Update a comment ✅ FIXED model name
+router.put('/comment/update/:id',verifyToken, async (req, res) => {
   try {
-    const comment = await Comment.findById(req.params.commentId);
-    if (comment.user.toString() !== req.user._id) {
-      return res.status(403).json({ error: 'Unauthorized' });
+    const comment = await Comment.findById(req.params.id);
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found' });
     }
-    await Comment.findByIdAndDelete(req.params.commentId);
-    res.json({ message: 'Comment deleted' });
+
+    comment.content = req.body.content;
+    await comment.save();
+    res.status(200).json(comment);
   } catch (err) {
-    res.status(500).json({ error: 'Error deleting comment' });
+    console.error("Error updating comment:", err);
+    res.status(500).json({ error: 'Error updating comment' });
   }
 });
 
