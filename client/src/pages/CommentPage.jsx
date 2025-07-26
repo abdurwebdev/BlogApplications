@@ -1,149 +1,149 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useParams } from 'react-router-dom';
-import { useCookies } from 'react-cookie';
 import moment from 'moment';
+import { Link } from 'react-router-dom';
 
-function CommentPage() {
-  const { postId } = useParams();
-  const [cookies] = useCookies(['token']);
+const Comments = ({ postId }) => {
   const [comments, setComments] = useState([]);
-  const [content, setContent] = useState('');
   const [userId, setUserId] = useState(null);
+  const [newComment, setNewComment] = useState('');
   const [editId, setEditId] = useState(null);
   const [editContent, setEditContent] = useState('');
 
-  useEffect(() => {
-    const token = cookies.token;
-    if (token) {
-      const decoded = JSON.parse(atob(token.split('.')[1]));
-      setUserId(decoded._id);
-    }
-  }, []);
-  useEffect(() => {
-    fetchUser();
-    fetchComments();
-  }, []);
-
-  const fetchUser = async () => {
-    try {
-      const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/me`, { withCredentials: true });
-      setUserId(res.data._id);
-    } catch (err) {
-      console.error('User fetch error', err);
-    }
-  };
-
   const fetchComments = async () => {
     try {
-      const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/comment/${postId}`);
+      const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/comments/${postId}`);
       setComments(res.data);
     } catch (err) {
       console.error('Error fetching comments:', err);
     }
   };
 
-  const handleAddComment = async () => {
+  const fetchUser = async () => {
     try {
-      await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/comment/${postId}`,
-        { content },
-        { withCredentials: true }
-      );
-      setContent('');
-      fetchComments();
+      const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/me`, {
+        withCredentials: true,
+      });
+      setUserId(res.data._id); // Ensure your /me route sends back {_id, ...}
     } catch (err) {
-      console.error('Error adding comment:', err);
+      console.error('User fetch error', err);
     }
   };
 
-  const handleEdit = async (id) => {
+  useEffect(() => {
+    fetchComments();
+    fetchUser();
+  }, [postId]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim()) return;
+
     try {
-      await axios.put(
-        `${import.meta.env.VITE_BACKEND_URL}/comment/${id}`,
-        { content: editContent },
+      await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/comments/${postId}`,
+        { content: newComment },
         { withCredentials: true }
       );
-      setEditId(null);
+      setNewComment('');
       fetchComments();
     } catch (err) {
-      console.error('Error editing comment:', err);
+      console.error('Error posting comment:', err);
     }
   };
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/comment/${id}`, { withCredentials: true });
+      await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/api/comments/delete/${id}`, {
+        withCredentials: true,
+      });
       fetchComments();
     } catch (err) {
       console.error('Error deleting comment:', err);
     }
   };
 
+  const handleEdit = async (id) => {
+    try {
+      await axios.put(
+        `${import.meta.env.VITE_BACKEND_URL}/api/comments/update/${id}`,
+        { content: editContent },
+        { withCredentials: true }
+      );
+      setEditId(null);
+      setEditContent('');
+      fetchComments();
+    } catch (err) {
+      console.error('Error editing comment:', err);
+    }
+  };
+
   return (
-    <div className='min-h-screen w-full bg-black text-white p-4'>
-      <h1 className='text-2xl font-bold mb-4'>Comments</h1>
-
-      <div className='mb-4'>
-        <textarea
-          className='w-full p-2 bg-zinc-800 text-white rounded-md'
-          placeholder='Write a comment...'
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
+    <div className="p-4">
+      <form onSubmit={handleSubmit} className="mb-4">
+        <input
+          type="text"
+          value={newComment}
+          onChange={(e) => setNewComment(e.target.value)}
+          placeholder="Add a comment"
+          className="w-full sm:w-96 h-10 rounded-md bg-zinc-800 text-white outline-none px-3"
         />
-        <button onClick={handleAddComment} className='mt-2 px-4 py-2 bg-yellow-500 rounded-md'>
-          Add Comment
+        <button type="submit" className="ml-2 px-4 py-2 bg-blue-500 rounded-md text-white">
+          Post
         </button>
-      </div>
+      </form>
 
-      <div className='space-y-4'>
+      <div className="space-y-4">
         {comments.map((comment) => (
-          <div key={comment._id} className='bg-zinc-700 p-3 rounded-md'>
-            <p className='text-sm text-gray-300'>By: {comment.user?.username}</p>
-            <p className='text-sm text-gray-400'>
-              {moment(comment.createdAt).format('MMMM Do YYYY, h:mm:ss a')}
-            </p>
+          <div key={comment._id} className="bg-zinc-800 p-4 rounded-md text-white">
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold">
+                {comment.user?.username || 'Unknown User'} • {moment(comment.createdAt).fromNow()}
+              </div>
+              {comment.user && comment.user._id === userId && (
+                <div className="flex gap-x-2">
+                  <button
+                    onClick={() => {
+                      setEditId(comment._id);
+                      setEditContent(comment.content);
+                    }}
+                    className="text-blue-400 hover:underline"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(comment._id)}
+                    className="text-red-400 hover:underline"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
 
             {editId === comment._id ? (
-              <>
-                <textarea
+              <div className="mt-2">
+                <input
+                  type="text"
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
-                  className='w-full p-2 mt-2 bg-zinc-800 text-white rounded-md'
+                  className="w-full sm:w-96 h-10 rounded-md bg-zinc-700 text-white outline-none px-3"
                 />
-                <button onClick={() => handleEdit(comment._id)} className='mt-2 px-4 py-2 bg-green-500 rounded-md'>
+                <button
+                  onClick={() => handleEdit(comment._id)}
+                  className="ml-2 px-3 py-1 bg-green-500 rounded-md text-white"
+                >
                   Save
                 </button>
-              </>
+              </div>
             ) : (
-              <p className='mt-2'>{comment.content}</p>
+              <p className="mt-2">{comment.content}</p>
             )}
-
-{comment.user && comment.user._id === userId && (
-  <div className='mt-2 flex gap-x-3'>
-    <button
-      onClick={() => {
-        setEditId(comment._id);
-        setEditContent(comment.content);
-      }}
-      className='px-3 py-1 bg-blue-500 rounded-md'
-    >
-      Edit
-    </button>
-    <button
-      onClick={() => handleDelete(comment._id)}
-      className='px-3 py-1 bg-red-500 rounded-md'
-    >
-      Delete
-    </button>
-  </div>
-)}
-
           </div>
         ))}
       </div>
     </div>
   );
-}
+};
 
 export default CommentPage;
